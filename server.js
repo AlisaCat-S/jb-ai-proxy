@@ -72,12 +72,16 @@ function panelAuth(req, res, next) {
   const fullPath = req.baseUrl + req.path;
   // Let login page and login API through
   if (fullPath === '/panel/login.html' || fullPath === '/api/panel/login') return next();
+  // Let OAuth callback through (local redirect flow)
+  if (fullPath === '/auth/callback' || fullPath === '/auth/start') return next();
+  // Root with code param = OAuth callback
+  if (fullPath === '/' && req.query.code) return next();
   // Static assets (css/js) let through so login page works
   if (fullPath.startsWith('/panel/') && (fullPath.endsWith('.css') || fullPath.endsWith('.js'))) return next();
   // Redirect panel page to login
   if (fullPath.startsWith('/panel')) return res.redirect('/panel/login.html');
   // Block API calls
-  if (req.path.startsWith('/api/') || req.path.startsWith('/auth/')) {
+  if (fullPath.startsWith('/api/') || fullPath.startsWith('/auth/')) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   next();
