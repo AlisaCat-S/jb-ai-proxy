@@ -1,4 +1,12 @@
-document.addEventListener('DOMContentLoaded', loadAccounts);
+document.addEventListener('DOMContentLoaded', async () => {
+  // Check panel auth
+  const res = await fetch('/api/accounts');
+  if (res.status === 401) {
+    location.href = '/panel/login.html';
+    return;
+  }
+  loadAccounts();
+});
 
 // 通用：给按钮加 loading 状态
 async function withLoading(btn, text, fn) {

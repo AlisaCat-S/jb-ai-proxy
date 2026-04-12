@@ -64,19 +64,64 @@ function apiKeyAuth(req, res, next) {
   next();
 }
 
-// Static panel
-app.use('/panel', express.static(path.join(__dirname, 'panel')));
+// Panel password auth
+function panelAuth(req, res, next) {
+  if (!config.panel_password) return next();
+  const token = req.cookies?.panel_token || req.headers['x-panel-token'];
+  if (token === config.panel_password) return next();
+  const fullPath = req.baseUrl + req.path;
+  // Let login page and login API through
+  if (fullPath === '/panel/login.html' || fullPath === '/api/panel/login') return next();
+  // Static assets (css/js) let through so login page works
+  if (fullPath.startsWith('/panel/') && (fullPath.endsWith('.css') || fullPath.endsWith('.js'))) return next();
+  // Redirect panel page to login
+  if (fullPath.startsWith('/panel')) return res.redirect('/panel/login.html');
+  // Block API calls
+  if (req.path.startsWith('/api/') || req.path.startsWith('/auth/')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+}
+
+// Parse cookies
+app.use((req, res, next) => {
+  req.cookies = {};
+  const header = req.headers.cookie || '';
+  header.split(';').forEach(c => {
+    const [k, ...v] = c.trim().split('=');
+    if (k) req.cookies[k] = v.join('=');
+  });
+  next();
+});
+
+// Static panel (with auth)
+app.use('/panel', panelAuth, express.static(path.join(__dirname, 'panel')));
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', accounts: accountManager.getAll().length }));
+
+// Panel login API
+app.post('/api/panel/login', (req, res) => {
+  if (req.body.password === config.panel_password) {
+    res.setHeader('Set-Cookie', `panel_token=${config.panel_password}; HttpOnly; Path=/; Max-Age=${7*24*3600}`);
+    return res.json({ ok: true });
+  }
+  res.status(401).json({ error: '密码错误' });
+});
+
+// Panel logout
+app.post('/api/panel/logout', (req, res) => {
+  res.setHeader('Set-Cookie', 'panel_token=; HttpOnly; Path=/; Max-Age=0');
+  res.json({ ok: true });
+});
 
 // API routes (with API key auth)
 app.use(apiKeyAuth, openaiRoutes);
 app.use(apiKeyAuth, anthropicRoutes);
 
-// Auth + panel API routes (no API key needed)
-app.use(authRoutes);
-app.use(panelApiRoutes);
+// Auth + panel API routes (with panel password auth)
+app.use(panelAuth, authRoutes);
+app.use(panelAuth, panelApiRoutes);
 
 // Initialize and start
 accountManager.init();
