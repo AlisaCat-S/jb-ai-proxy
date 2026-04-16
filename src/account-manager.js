@@ -188,6 +188,9 @@ async function updateLicenseId(id, licenseId) {
 async function forceRefresh(id) {
   const account = accounts.find(a => a.id === id);
   if (!account) throw new Error('Account not found');
+  // 真正强制刷新：清掉 token 过期时间，让 ensureValidJwt 必定走刷新逻辑
+  account.id_token_expires_at = 0;
+  account.jwt_expires_at = 0;
   await ensureValidJwt(account);
   persist();
   return account;
