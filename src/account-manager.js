@@ -188,10 +188,15 @@ async function updateLicenseId(id, licenseId) {
 async function forceRefresh(id) {
   const account = accounts.find(a => a.id === id);
   if (!account) throw new Error('Account not found');
-  // 真正强制刷新：清掉 token 过期时间，让 ensureValidJwt 必定走刷新逻辑
-  account.id_token_expires_at = 0;
-  account.jwt_expires_at = 0;
+  // 只在 status=error 时才强制轮换 RT 恢复；正常账号仍走原逻辑（token 未过期则跳过）
+  if (account.status === 'error') {
+    account.id_token_expires_at = 0;
+    account.jwt_expires_at = 0;
+  }
   await ensureValidJwt(account);
+  // ensureValidJwt 里 refreshJwt 成功才会设 status=active；
+  // 如果没触发 refreshJwt（token 还有效），说明账号本来就没问题，也标记 active
+  if (account.status !== 'error') account.status = 'active';
   persist();
   return account;
 }
