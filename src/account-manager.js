@@ -226,7 +226,14 @@ function persist() {
   saveCredentials(accounts);
 }
 
+function markStatus(account, status) {
+  if (account.status === status) return;
+  account.status = status;
+  persist();
+}
+
 module.exports = {
   init, getAll, addFromOAuth, addManual, remove, updateLicenseId,
   getNext, ensureValidJwt, forceRefresh, getQuotaForAccount,
+  markStatus,
 };

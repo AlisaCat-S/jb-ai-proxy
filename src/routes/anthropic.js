@@ -42,7 +42,10 @@ router.post('/v1/messages', async (req, res) => {
     if (!jbRes.ok) {
       const errText = await jbRes.text();
       const status = jbRes.status === 477 ? 429 : jbRes.status;
-      if (jbRes.status === 477) account.status = 'quota_exhausted';
+      if (jbRes.status === 477) {
+        const suspended = /license suspension|suspended/i.test(errText);
+        accountManager.markStatus(account, suspended ? 'suspended' : 'quota_exhausted');
+      }
       return res.status(status).json({
         type: 'error',
         error: { type: 'api_error', message: errText },

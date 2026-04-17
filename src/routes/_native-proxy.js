@@ -1,3 +1,5 @@
+const accountManager = require('../account-manager');
+
 /**
  * Shared pipeline for the native passthrough routes
  * (Anthropic /v1/messages, OpenAI /v1/chat/completions and /v1/responses).
@@ -8,7 +10,10 @@
  *   Content-Type so SSE vs JSON works for both sides.
  * - Wires an AbortController to req `close` so client disconnects cancel
  *   the upstream fetch instead of leaving the JB socket hanging.
- * - Maps JB's 477 "quota exhausted" to 429 and flips the account status.
+ * - Maps JB's 477 to 429 and marks the account suspended or quota-exhausted
+ *   based on whether the error body mentions license suspension. The
+ *   marked state is persisted to credentials.json immediately so a proxy
+ *   restart doesn't reset it.
  * - Preserves each provider's error body shape when present; otherwise
  *   wraps whatever upstream returned in the appropriate envelope.
  */
@@ -75,7 +80,10 @@ function waitDrainOrAbort(res, signal) {
 async function forwardError(res, jbRes, account, errorShape) {
   const errText = await jbRes.text();
   const status = jbRes.status === 477 ? 429 : jbRes.status;
-  if (jbRes.status === 477) account.status = 'quota_exhausted';
+  if (jbRes.status === 477) {
+    const suspended = /license suspension|suspended/i.test(errText);
+    accountManager.markStatus(account, suspended ? 'suspended' : 'quota_exhausted');
+  }
 
   try {
     const parsed = JSON.parse(errText);

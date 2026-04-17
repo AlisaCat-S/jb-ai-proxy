@@ -245,6 +245,11 @@ code {
   color: #92400e;
 }
 
+.status-suspended {
+  background: #e5e7eb;
+  color: #374151;
+}
+
 .quota-bar {
   width: 120px;
   height: 5px;

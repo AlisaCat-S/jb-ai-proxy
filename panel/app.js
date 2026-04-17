@@ -55,7 +55,7 @@ async function loadAccounts() {
 }
 
 function statusText(s) {
-  const map = { active: '正常', error: '异常', quota_exhausted: '配额耗尽' };
+  const map = { active: '正常', error: '异常', quota_exhausted: '配额耗尽', suspended: '已冻结' };
   return map[s] || s;
 }
 
