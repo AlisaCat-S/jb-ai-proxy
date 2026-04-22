@@ -1,0 +1,19 @@
+services:
+  jb-ai-proxy:
+    build: .
+    container_name: jb-ai-proxy
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      - ./config.json:/app/config.json
+      - ./credentials.json:/app/credentials.json
+    environment:
+      - API_KEY=${API_KEY:-}
+      - PANEL_PASSWORD=${PANEL_PASSWORD:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
