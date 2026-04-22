@@ -10,7 +10,12 @@ services:
     environment:
       - API_KEY=${API_KEY:-}
       - PANEL_PASSWORD=${PANEL_PASSWORD:-}
+    mem_limit: 1g
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
