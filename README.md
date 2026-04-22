@@ -40,6 +40,94 @@ node server.js
 
 打开 `http://localhost:3000/panel` 进入管理面板。
 
+## Docker 部署
+
+### 快速启动
+
+```bash
+# 确保 config.json 存在（首次部署可使用默认配置）
+cp config.json config.json.bak 2>/dev/null || true
+
+# 确保 credentials.json 存在（容器会自动写入）
+touch credentials.json
+
+# 构建并启动
+docker compose up -d
+
+# 查看日志
+docker compose logs -f
+```
+
+管理面板：`http://localhost:3000/panel`
+
+### 配置方式
+
+**方式一：编辑 config.json（推荐）**
+
+直接编辑 `config.json`，通过 volume 挂载到容器中：
+
+```json
+{
+  "port": 3000,
+  "api_key": "sk-your-key",
+  "panel_password": "your-password",
+  "grazie_agent": {
+    "name": "aia:idea",
+    "version": "261.22158.366:261.22158.277"
+  }
+}
+```
+
+**方式二：环境变量覆盖**
+
+环境变量优先级高于 `config.json`：
+
+```bash
+# 通过命令行
+API_KEY=sk-xxx PANEL_PASSWORD=secret docker compose up -d
+
+# 或创建 .env 文件
+echo 'API_KEY=sk-xxx' > .env
+echo 'PANEL_PASSWORD=secret' >> .env
+docker compose up -d
+```
+
+支持的环境变量：
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `PORT` | 宿主机映射端口 | `3000` |
+| `API_KEY` | API 密钥（覆盖 config.json） | 空 |
+| `PANEL_PASSWORD` | 面板密码（覆盖 config.json） | 空 |
+
+### 自定义端口
+
+```bash
+# 修改宿主机映射端口
+PORT=8080 docker compose up -d
+```
+
+> **注意**：`config.json` 中的 `port` 值必须与 docker-compose 映射的容器内端口一致（默认 3000），否则健康检查和 OAuth 回调会失败。
+
+### Docker 环境下添加账号
+
+OAuth 回调 URL 固定为 `http://localhost:{port}`，**不做修改**以避免被 JetBrains 官方封禁。
+
+- **本地部署**：浏览器自动回调，与非 Docker 使用方式完全一致
+- **远程部署**：在管理面板上使用以下两种方式之一：
+  1. 「添加账号」→ 在本地浏览器打开授权链接 → 授权后复制回调 URL → 粘贴到面板提交
+  2. 「手动导入」→ 直接填入 Refresh Token 和 License ID
+
+### 常用命令
+
+```bash
+docker compose up -d              # 后台启动
+docker compose down                # 停止并移除容器
+docker compose logs -f             # 查看实时日志
+docker compose restart             # 重启
+docker compose build --no-cache    # 重新构建镜像
+```
+
 ## 添加账号
 
 ### 方式一：OAuth 登录
@@ -74,6 +162,8 @@ node server.js
 - `api_key`: API 密钥，留空表示不鉴权
 - `panel_password`: 管理面板密码，留空表示不需要密码
 - `grazie_agent`: 发送给 JetBrains API 的客户端标识
+
+环境变量 `API_KEY`、`PANEL_PASSWORD`、`PORT` 可覆盖对应配置项（Docker 部署时尤其方便）。
 
 ## API 使用
 
@@ -150,8 +240,11 @@ jb-ai-proxy/
   server.js                 # 入口
   config.json               # 配置
   credentials.json          # 账号凭据（自动生成）
+  Dockerfile                # Docker 镜像构建
+  docker-compose.yml        # Docker Compose 编排
+  .dockerignore             # Docker 构建排除
   src/
-    config.js               # 配置加载
+    config.js               # 配置加载（支持环境变量覆盖）
     jb-client.js            # JetBrains API 客户端（聚合 + 原生）
     auth-flow.js            # OAuth PKCE
     account-manager.js      # 账号管理、Token 刷新、轮询
