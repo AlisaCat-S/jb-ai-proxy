@@ -1,6 +1,6 @@
 services:
   jb-ai-proxy:
-    build: .
+    image: ghcr.io/alisacat-s/jb-ai-proxy:latest
     container_name: jb-ai-proxy
     ports:
       - "${PORT:-3000}:3000"
